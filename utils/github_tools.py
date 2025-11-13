@@ -64,6 +64,10 @@ class GitHubDataMaster:
         url = "https://api.github.com/user/repos"
         self.repositories = self._fetch_data(url, is_repo=True, max_retries=max_retries)
 
+    def fetch_gists(self, max_retries=5):
+        url = "https://api.github.com/gists"
+        self.gists = self._fetch_data(url, is_repo=False, max_retries=max_retries)
+
     def _fetch_data(self, url: str, is_repo: bool, max_retries=3) -> dict:
         data_dict = {}
         page = 1
@@ -88,7 +92,10 @@ class GitHubDataMaster:
                                         'archive_url': item['archive_url']
                                     }
                                 else:
-                                    data_dict[item['id']] = item['git_pull_url']
+                                    data_dict[item['id']] = {
+                                        'git_pull_url': item['git_pull_url'],
+                                        'updated_at': item['updated_at']
+                                    }
                             page += 1
                             break
                         else:

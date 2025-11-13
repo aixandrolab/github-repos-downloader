@@ -55,6 +55,7 @@ class AppManager:
     def _parse_arguments():
         parser = argparse.ArgumentParser(description="GitHub Repos Download Tools")
         parser.add_argument("-r", action="store_true", help="Download repositories")
+        parser.add_argument("-g", action="store_true", help="Download gists")
         parser.add_argument("--timeout", type=int, default=60,
                             help="Timeout for download operations in seconds (default: 60)", )
         mutex_group = parser.add_mutually_exclusive_group()
@@ -169,6 +170,8 @@ class AppManager:
         if item_type == "repositories":
             if '/' in repo_name:
                 full_repo_name = repo_name
+            else:
+                full_repo_name = f"aixandrolab/{repo_name}"
             
             if hasattr(self.github_data_master, 'token') and self.github_data_master.token:
                 url = f"https://{self.github_data_master.token}@github.com/{full_repo_name}/archive/master.zip"
@@ -176,9 +179,23 @@ class AppManager:
                 url = f"https://github.com/{full_repo_name}/archive/master.zip"
             
             if self.verbose:
-                print(f"🎯 Using authenticated URL for: {full_repo_name}")
+                print(f"🎯 Using authenticated URL for repository: {full_repo_name}")
             
             return url 
+        
+        elif item_type == "gists":
+            gist_id = repo_name
+            
+            if hasattr(self.github_data_master, 'token') and self.github_data_master.token:
+                url = f"https://{self.github_data_master.token}@gist.github.com/{self.github_data_master.login}/{gist_id}/archive/master.zip"
+            else:
+                url = f"https://gist.github.com/{self.github_data_master.login}/{gist_id}/archive/master.zip"
+            
+            if self.verbose:
+                print(f"🎯 Using URL for gist: {gist_id}")
+            
+            return url
+        
         return ""
 
     def _check_url_exists(self, url: str) -> bool:
@@ -193,11 +210,13 @@ class AppManager:
         if not os.path.exists(file_path):
             return True
         
-        if not isinstance(repo_data, dict) or 'pushed_at' not in repo_data:
+        date_field = 'pushed_at' if 'pushed_at' in repo_data else 'updated_at'
+        
+        if not isinstance(repo_data, dict) or date_field not in repo_data:
             return True
         
         try:
-            github_date = datetime.fromisoformat(repo_data['pushed_at'].replace('Z', '+00:00'))
+            github_date = datetime.fromisoformat(repo_data[date_field].replace('Z', '+00:00'))
             
             local_date = datetime.fromtimestamp(os.path.getmtime(file_path))
             
@@ -207,7 +226,8 @@ class AppManager:
             needs_update = github_date_utc > local_date_utc
             
             if self.verbose:
-                print(f"🔍 Date check: GitHub={github_date_utc}, Local={local_date_utc}, Update needed={needs_update}")
+                item_type = "repository" if 'pushed_at' in repo_data else "gist"
+                print(f"🔍 {item_type.title()} date check: GitHub={github_date_utc}, Local={local_date_utc}, Update needed={needs_update}")
             
             return needs_update
             
@@ -232,11 +252,13 @@ class AppManager:
         self.timeout = args.timeout
         print(f'Download operations timeout: {self.timeout} seconds ✅')
         download_repos = args.r
+        download_gists = args.g
         exec_shutdown = args.shutdown
         exec_reboot = args.reboot
         self.verbose = args.verbose
 
         print(f'Download repositories: {self.get_yes_no(download_repos)}')
+        print(f'Download gists: {self.get_yes_no(download_gists)}')
         print(f'Shutdown: {self.get_yes_no(exec_shutdown)}')
         print(f'Reboot: {self.get_yes_no(exec_reboot)}')
         print(f'Verbose: {self.get_yes_no(self.verbose)}\n')
@@ -265,10 +287,15 @@ class AppManager:
         print(f'✅ Path: {path}\n')
 
         repos_failed = {}
+        gists_failed = {}
 
         if download_repos:
             repos_target_dir = os.path.join(path, "repositories")
             repos_failed = self.download_items(repos_target_dir, self.github_data_master.fetch_repositories, "repositories")
+
+        if download_gists:
+            gists_target_dir = os.path.join(path, "gists")
+            gists_failed = self.download_items(gists_target_dir, self.github_data_master.fetch_gists, "gists")
 
         try:
             repos_data_for_report = {}
@@ -279,10 +306,21 @@ class AppManager:
                     else:
                         repos_data_for_report[name] = data
 
+            gists_data_for_report = {}
+            if hasattr(self.github_data_master, "gists"):
+                for name, data in self.github_data_master.gists.items():
+                    if isinstance(data, dict):
+                        gists_data_for_report[name] = data.get('git_pull_url', 'N/A')
+                    else:
+                        gists_data_for_report[name] = data
+
             report = BackupReporter.generate(
                 download_repos=download_repos,
+                download_gists=download_gists,
                 repos_data=repos_data_for_report,
+                gists_data=gists_data_for_report,
                 failed_repos=repos_failed,
+                failed_gists=gists_failed,
                 backup_path=path
             )
             self.printer.print_center(text=' REPORT: ')
@@ -353,30 +391,87 @@ class AppManager:
             return {}
 
         total_to_process = len(download_tasks)
-        if self.verbose:
-            print(f"\n🚀 Starting download of {total_to_process} items... (skipped {skipped_count})")
-        else:
-            print(f"🚀 Starting download of {total_to_process} items... (skipped {skipped_count})")
-
-        for index, (name, url, file_path) in enumerate(download_tasks, start=1):
-            current_position = skipped_count + index
+        
+        if item_type == "repositories":
+            if self.verbose:
+                print(f"\n🚀 Starting PARALLEL download of {total_to_process} repositories... (skipped {skipped_count})")
+            else:
+                print(f"🚀 Starting PARALLEL download of {total_to_process} repositories... (skipped {skipped_count})")
             
+            failed_dict = {}
+            success_count = 0
+            lock = threading.Lock()
+            
+            def download_single(task):
+                name, url, file_path = task
+                try:
+                    success = self._download_with_curl(url, file_path)
+                    
+                    with lock:
+                        if success:
+                            nonlocal success_count
+                            success_count += 1
+                            if self.verbose:
+                                print(f"✅ Downloaded: {name}")
+                            return True
+                        else:
+                            failed_dict[name] = url
+                            if self.verbose:
+                                print(f"❌ Failed: {name}")
+                            return False
+                except Exception as e:
+                    with lock:
+                        failed_dict[name] = url
+                        if self.verbose:
+                            print(f"❌ Error downloading {name}: {e}")
+                    return False
+
             if not self.verbose:
-                progress_bar.update(current_position, count, len(failed_dict), f"Downloading: {name}")
-            else:
-                self.printer.print_framed(f'Downloading {index}/{total_to_process}: {name}')
-                print(f"   📦 Downloading archive...")
-
-            success = self._download_with_curl(url, file_path)
-
-            if success:
-                success_count += 1
+                progress_bar_parallel = ProgressBar()
+                completed = 0
+                total_tasks = len(download_tasks)
+                
+                def update_progress(future):
+                    nonlocal completed
+                    completed += 1
+                    progress_bar_parallel.update(completed, total_tasks, len(failed_dict), "Downloading...")
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 if self.verbose:
-                    print(f"   ✅ Successfully downloaded: {name}")
+                    results = list(executor.map(download_single, download_tasks))
+                else:
+                    futures = [executor.submit(download_single, task) for task in download_tasks]
+                    for future in concurrent.futures.as_completed(futures):
+                        update_progress(future)
+                    results = [future.result() for future in futures]
+                    
+        else:
+            if self.verbose:
+                print(f"\n🚀 Starting download of {total_to_process} gists... (skipped {skipped_count})")
             else:
-                failed_dict[name] = url
-                if self.verbose:
-                    print(f"   ❌ Failed to download: {name}")
+                print(f"🚀 Starting download of {total_to_process} gists... (skipped {skipped_count})")
+
+            for index, (name, url, file_path) in enumerate(download_tasks, start=1):
+                current_position = skipped_count + index
+                
+                if not self.verbose:
+                    progress_bar.update(current_position, count, len(failed_dict), f"Downloading: {name}")
+                else:
+                    self.printer.print_framed(f'Downloading {index}/{total_to_process}: {name}')
+                    print(f"   📦 Downloading archive...")
+
+                success = self._download_with_curl(url, file_path)
+
+                if success:
+                    success_count += 1
+                    if self.verbose:
+                        print(f"   ✅ Successfully downloaded: {name}")
+                        print('-' * 50)
+                else:
+                    failed_dict[name] = url
+                    if self.verbose:
+                        print(f"   ❌ Failed to download: {name}")
+                        print('-' * 50)
 
         retry_count = 0
         max_retries = 2
@@ -395,27 +490,65 @@ class AppManager:
             current_failed = failed_dict.copy()
             failed_dict.clear()
 
-            for index, (name, url) in enumerate(current_failed.items(), start=1):
-                current_position = skipped_count + success_count + index
-                
+            if item_type == "repositories":
+                def retry_single(task):
+                    name, url = task
+                    clean_name = name.split('/')[-1] if '/' in name else name
+                    file_path = self.create_item_path(target_dir, clean_name)
+                    
+                    success = self._download_with_curl(url, file_path)
+                    
+                    with lock:
+                        if success:
+                            nonlocal success_count
+                            success_count += 1
+                            if self.verbose:
+                                print(f"✅ Successfully downloaded on retry: {name}")
+                            return True
+                        else:
+                            failed_dict[name] = url
+                            if self.verbose:
+                                print(f"⚠️ Still failed after retry: {name}")
+                            return False
+
                 if not self.verbose:
-                    progress_bar.update(current_position, count, len(failed_dict), f"Retrying: {name}")
-                else:
-                    self.printer.print_framed(f'Retry {retry_count}/{max_retries}: {index}/{len(current_failed)}: {name}')
+                    progress_bar_retry = ProgressBar()
+                    completed_retry = 0
+                    
+                    def update_retry_progress(future):
+                        nonlocal completed_retry
+                        completed_retry += 1
+                        progress_bar_retry.update(completed_retry, len(current_failed), len(failed_dict), "Retrying...")
 
-                clean_name = name.split('/')[-1] if '/' in name else name
-                file_path = self.create_item_path(target_dir, clean_name)
-
-                success = self._download_with_curl(url, file_path)
-
-                if success:
-                    success_count += 1
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                     if self.verbose:
-                        print(f"   ✅ Successfully downloaded on retry: {name}")
-                else:
-                    failed_dict[name] = url
-                    if self.verbose:
-                        print(f"   ❌ Still failed after retry: {name}")
+                        results = list(executor.map(retry_single, current_failed.items()))
+                    else:
+                        futures = [executor.submit(retry_single, task) for task in current_failed.items()]
+                        for future in concurrent.futures.as_completed(futures):
+                            update_retry_progress(future)
+            else:
+                for index, (name, url) in enumerate(current_failed.items(), start=1):
+                    current_position = skipped_count + success_count + index
+                    
+                    if not self.verbose:
+                        progress_bar.update(current_position, count, len(failed_dict), f"Retrying: {name}")
+                    else:
+                        self.printer.print_framed(f'Retry {retry_count}/{max_retries}: {index}/{len(current_failed)}: {name}')
+
+                    clean_name = name.split('/')[-1] if '/' in name else name
+                    file_path = self.create_item_path(target_dir, clean_name)
+
+                    success = self._download_with_curl(url, file_path)
+
+                    if success:
+                        success_count += 1
+                        if self.verbose:
+                            print(f"   ✅ Successfully downloaded on retry: {name}")
+                    else:
+                        failed_dict[name] = url
+                        if self.verbose:
+                            print(f"   ❌ Still failed after retry: {name}")
 
             if failed_dict and retry_count < max_retries:
                 if self.verbose:
@@ -423,8 +556,12 @@ class AppManager:
                 import time
                 time.sleep(5)
 
+        # ФИНАЛЬНЫЙ РЕЗУЛЬТАТ
         if not self.verbose:
-            progress_bar.finish(message=f'Completed {success_count + skipped_count}/{count} {item_type}!')
+            if item_type == "repositories":
+                progress_bar_parallel.finish(message=f'Completed {success_count + skipped_count}/{count} {item_type}!')
+            else:
+                progress_bar.finish(message=f'Completed {success_count + skipped_count}/{count} {item_type}!')
 
         print(f"\n📊 Final Results: {success_count} downloaded, {skipped_count} skipped, {len(failed_dict)} failed")
         

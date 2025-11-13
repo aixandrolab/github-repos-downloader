@@ -40,6 +40,7 @@ class BackupReporter:
     @staticmethod
     def generate(
             download_repos: bool,
+            download_gists: bool,
             repos_data: Dict[str, str],
             failed_repos: Dict[str, str],
             backup_path: str

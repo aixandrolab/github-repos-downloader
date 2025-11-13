@@ -41,6 +41,7 @@ token = your_github_personal_access_token_here
 4. Set expiration: "No expiration" (recommended for backups)
 5. Select scopes:
    - ✅ `repo` (Full control of private repositories)
+   - ✅ `gists` (Full control of gists)
    - ✅ `read:org` (Read org permissions)
    - ✅ `read:user` (Read user profile data)
 
@@ -54,6 +55,11 @@ token = your_github_personal_access_token_here
 **Download all repositories:**
 ```bash
 python main.py -r
+```
+
+**Download all gists:**
+```bash
+python main.py -g
 ```
 
 **Verbose mode with detailed output:**
@@ -135,6 +141,7 @@ github-repos-backup-tools/
 
 The token requires these permissions:
 - **repo**: Access to private repositories and download capabilities
+- **gists**: Access to gists
 - **read:org**: Read organization membership (if applicable)
 - **read:user**: Read user profile information
 
@@ -171,7 +178,7 @@ Default timeout is 60 seconds. Adjust based on:
 
 Use verbose mode to see detailed process:
 ```bash
-python main.py -r --verbose --timeout 120
+python main.py -r -g --verbose --timeout 120
 ```
 
 ## 🔒 Security Notes
