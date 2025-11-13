@@ -4,7 +4,7 @@
 # Copyright © 2025, Alexander Suvorov
 # All rights reserved.
 # --------------------------------------------------------
-# https://github.com/smartlegionlab/
+# https://github.com/aixadrolab/
 # --------------------------------------------------------
 import os
 import shutil
@@ -185,6 +185,33 @@ class AppManager:
             return result.returncode == 0
         except:
             return False
+    
+    def _needs_download(self, repo_name: str, repo_data: dict, file_path: str) -> bool:
+        if not os.path.exists(file_path):
+            return True
+        
+        if not isinstance(repo_data, dict) or 'pushed_at' not in repo_data:
+            return True
+        
+        try:
+            github_date = datetime.fromisoformat(repo_data['pushed_at'].replace('Z', '+00:00'))
+            
+            local_date = datetime.fromtimestamp(os.path.getmtime(file_path))
+            
+            github_date_utc = github_date.astimezone(timezone.utc)
+            local_date_utc = local_date.astimezone(timezone.utc) if local_date.tzinfo else local_date.replace(tzinfo=timezone.utc)
+            
+            needs_update = github_date_utc > local_date_utc
+            
+            if self.verbose:
+                print(f"🔍 Date check: GitHub={github_date_utc}, Local={local_date_utc}, Update needed={needs_update}")
+            
+            return needs_update
+            
+        except Exception as e:
+            if self.verbose:
+                print(f"⚠️ Date comparison error: {e}")
+            return True
 
     def start(self):
         self.printer.show_head(text=self.config.name)
@@ -289,10 +316,18 @@ class AppManager:
         progress_bar = ProgressBar()
 
         for index, (name, item_data) in enumerate(items.items(), start=1):
+            clean_name = name.split('/')[-1] if '/' in name else name
+            file_path = self.create_item_path(target_dir, clean_name)
             if not self.verbose:
                 progress_bar.update(index, count, len(failed_dict), f"Downloading: {name}")
             else:
                 self.printer.print_framed(f'{index}/{count}/{len(failed_dict)}: Downloading: {name}')
+            
+            if not self._needs_download(name, item_data, file_path):
+                success_count += 1
+                if self.verbose:
+                    print(f"✅ Already up to date: {name}")
+                continue
 
             download_url = self._get_download_url(name, item_data, item_type)
             
@@ -301,9 +336,6 @@ class AppManager:
                     print(f"⚠️ Could not get download URL for: {name}")
                 failed_dict[name] = "No download URL"
                 continue
-
-            clean_name = name.split('/')[-1] if '/' in name else name
-            file_path = self.create_item_path(target_dir, clean_name)
 
             success = self._download_with_curl(download_url, file_path)
 
@@ -316,10 +348,56 @@ class AppManager:
                 if self.verbose:
                     print(f"⚠️ Failed to download: {name}")
 
+        retry_count = 0
+        max_retries = 2
+        
+        while failed_dict and retry_count < max_retries:
+            retry_count += 1
+            if self.verbose:
+                self.printer.print_center()
+                print()
+                self.printer.print_framed(f"🔄 Retry attempt {retry_count}/{max_retries}: {len(failed_dict)} {item_type} remaining")
+                print()
+                self.printer.print_center()
+
+            current_failed = failed_dict.copy()
+            failed_dict.clear()
+
+            for index, (name, url) in enumerate(current_failed.items(), start=1):
+                if not self.verbose:
+                    progress_bar.update(index, len(current_failed), len(failed_dict), f"Retrying: {name}")
+                else:
+                    self.printer.print_framed(f'Retry {retry_count}/{max_retries}: {index}/{len(current_failed)}: {name}')
+
+                clean_name = name.split('/')[-1] if '/' in name else name
+                file_path = self.create_item_path(target_dir, clean_name)
+
+                success = self._download_with_curl(url, file_path)
+
+                if success:
+                    success_count += 1
+                    if self.verbose:
+                        print(f"✅ Successfully downloaded on retry: {name}")
+                else:
+                    failed_dict[name] = url
+                    if self.verbose:
+                        print(f"⚠️ Still failed after retry: {name}")
+
+            if failed_dict and retry_count < max_retries:
+                print(f"\n⏳ Waiting 5 seconds before next retry...")
+                import time
+                time.sleep(5)
+
         if not self.verbose:
             progress_bar.finish(message=f'Downloaded {success_count}/{count} {item_type} successfully!')
 
-        print(f"\n📊 Results: {success_count} successful, {len(failed_dict)} failed")
+        print(f"\n📊 Final Results: {success_count} successful, {len(failed_dict)} failed")
+        
+        if failed_dict:
+            print(f"\n❌ Failed {item_type} after {max_retries} retries:")
+            for failed_name in failed_dict.keys():
+                print(f"   - {failed_name}")
+        
         return failed_dict
 
     def stop(self, shutdown=False):

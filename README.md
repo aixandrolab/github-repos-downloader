@@ -21,8 +21,8 @@ A comprehensive solution for backing up GitHub repositories and gists with full 
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/smartlegionlab/github-repos-backup-tools.git
-cd github-repos-backup-tools
+git clone https://github.com/aixandrolab/github-repos-downloader.git
+cd github-repos-downloader
 ```
 
 ### 2. Create Configuration File
@@ -211,4 +211,4 @@ For issues and questions:
 ---
 
 **Maintainer:** Alexander Suvorov  
-**Repository:** https://github.com/smartlegionlab/github-repos-backup-tools
+**Repository:** https://github.com/aixadrolab/github-repos-downloader
