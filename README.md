@@ -218,4 +218,4 @@ For issues and questions:
 ---
 
 **Maintainer:** Alexander Suvorov  
-**Repository:** https://github.com/aixadrolab/github-repos-downloader
+**Repository:** https://github.com/aixandrolab/github-repos-downloader

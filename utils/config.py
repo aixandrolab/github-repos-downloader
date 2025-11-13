@@ -4,7 +4,7 @@
 # Copyright © 2025, Alexander Suvorov
 # All rights reserved.
 # --------------------------------------------------------
-# https://github.com/aixadrolab/
+# https://github.com/aixandrolab/
 # --------------------------------------------------------
 
 
