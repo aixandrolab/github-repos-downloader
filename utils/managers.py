@@ -22,6 +22,9 @@ from utils.parsers import ConfigParser
 from utils.printers import SmartPrinter
 from utils.progress_bar import ProgressBar
 
+import concurrent.futures
+import threading
+
 
 class AppManager:
     def __init__(
@@ -311,42 +314,69 @@ class AppManager:
         else:
             self.printer.print_framed(f'✅ Found {count} {item_type} ')
         print()
+        
         failed_dict = {}
         success_count = 0
-        progress_bar = ProgressBar()
+        skipped_count = 0
+        download_tasks = []
+        
+        if not self.verbose:
+            progress_bar = ProgressBar()
 
         for index, (name, item_data) in enumerate(items.items(), start=1):
             clean_name = name.split('/')[-1] if '/' in name else name
             file_path = self.create_item_path(target_dir, clean_name)
+            
             if not self.verbose:
-                progress_bar.update(index, count, len(failed_dict), f"Downloading: {name}")
+                progress_bar.update(index, count, len(failed_dict), f"Checking: {name}")
             else:
-                self.printer.print_framed(f'{index}/{count}/{len(failed_dict)}: Downloading: {name}')
+                self.printer.print_framed(f'{index}/{count}/{len(failed_dict)}: Checking: {name}')
             
             if not self._needs_download(name, item_data, file_path):
-                success_count += 1
+                skipped_count += 1
                 if self.verbose:
-                    print(f"✅ Already up to date: {name}")
+                    print(f"   ✅ Already up to date: {name}")
                 continue
 
             download_url = self._get_download_url(name, item_data, item_type)
             
             if not download_url:
                 if self.verbose:
-                    print(f"⚠️ Could not get download URL for: {name}")
+                    print(f"   ⚠️ Could not get download URL for: {name}")
                 failed_dict[name] = "No download URL"
                 continue
 
-            success = self._download_with_curl(download_url, file_path)
+            download_tasks.append((name, download_url, file_path))
+
+        if not download_tasks:
+            print(f"📊 All items are already up to date! (skipped {skipped_count})")
+            return {}
+
+        total_to_process = len(download_tasks)
+        if self.verbose:
+            print(f"\n🚀 Starting download of {total_to_process} items... (skipped {skipped_count})")
+        else:
+            print(f"🚀 Starting download of {total_to_process} items... (skipped {skipped_count})")
+
+        for index, (name, url, file_path) in enumerate(download_tasks, start=1):
+            current_position = skipped_count + index
+            
+            if not self.verbose:
+                progress_bar.update(current_position, count, len(failed_dict), f"Downloading: {name}")
+            else:
+                self.printer.print_framed(f'Downloading {index}/{total_to_process}: {name}')
+                print(f"   📦 Downloading archive...")
+
+            success = self._download_with_curl(url, file_path)
 
             if success:
                 success_count += 1
                 if self.verbose:
-                    print(f"✅ Successfully downloaded: {name}")
+                    print(f"   ✅ Successfully downloaded: {name}")
             else:
-                failed_dict[name] = download_url
+                failed_dict[name] = url
                 if self.verbose:
-                    print(f"⚠️ Failed to download: {name}")
+                    print(f"   ❌ Failed to download: {name}")
 
         retry_count = 0
         max_retries = 2
@@ -359,13 +389,17 @@ class AppManager:
                 self.printer.print_framed(f"🔄 Retry attempt {retry_count}/{max_retries}: {len(failed_dict)} {item_type} remaining")
                 print()
                 self.printer.print_center()
+            else:
+                print(f"\n🔄 Retry attempt {retry_count}/{max_retries}: {len(failed_dict)} {item_type} remaining")
 
             current_failed = failed_dict.copy()
             failed_dict.clear()
 
             for index, (name, url) in enumerate(current_failed.items(), start=1):
+                current_position = skipped_count + success_count + index
+                
                 if not self.verbose:
-                    progress_bar.update(index, len(current_failed), len(failed_dict), f"Retrying: {name}")
+                    progress_bar.update(current_position, count, len(failed_dict), f"Retrying: {name}")
                 else:
                     self.printer.print_framed(f'Retry {retry_count}/{max_retries}: {index}/{len(current_failed)}: {name}')
 
@@ -377,21 +411,22 @@ class AppManager:
                 if success:
                     success_count += 1
                     if self.verbose:
-                        print(f"✅ Successfully downloaded on retry: {name}")
+                        print(f"   ✅ Successfully downloaded on retry: {name}")
                 else:
                     failed_dict[name] = url
                     if self.verbose:
-                        print(f"⚠️ Still failed after retry: {name}")
+                        print(f"   ❌ Still failed after retry: {name}")
 
             if failed_dict and retry_count < max_retries:
-                print(f"\n⏳ Waiting 5 seconds before next retry...")
+                if self.verbose:
+                    print(f"\n⏳ Waiting 5 seconds before next retry...")
                 import time
                 time.sleep(5)
 
         if not self.verbose:
-            progress_bar.finish(message=f'Downloaded {success_count}/{count} {item_type} successfully!')
+            progress_bar.finish(message=f'Completed {success_count + skipped_count}/{count} {item_type}!')
 
-        print(f"\n📊 Final Results: {success_count} successful, {len(failed_dict)} failed")
+        print(f"\n📊 Final Results: {success_count} downloaded, {skipped_count} skipped, {len(failed_dict)} failed")
         
         if failed_dict:
             print(f"\n❌ Failed {item_type} after {max_retries} retries:")
