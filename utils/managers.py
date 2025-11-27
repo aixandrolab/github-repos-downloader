@@ -205,36 +205,6 @@ class AppManager:
             return result.returncode == 0
         except:
             return False
-    
-    def _needs_download(self, repo_name: str, repo_data: dict, file_path: str) -> bool:
-        if not os.path.exists(file_path):
-            return True
-        
-        date_field = 'pushed_at' if 'pushed_at' in repo_data else 'updated_at'
-        
-        if not isinstance(repo_data, dict) or date_field not in repo_data:
-            return True
-        
-        try:
-            github_date = datetime.fromisoformat(repo_data[date_field].replace('Z', '+00:00'))
-            
-            local_date = datetime.fromtimestamp(os.path.getmtime(file_path))
-            
-            github_date_utc = github_date.astimezone(timezone.utc)
-            local_date_utc = local_date.astimezone(timezone.utc) if local_date.tzinfo else local_date.replace(tzinfo=timezone.utc)
-            
-            needs_update = github_date_utc > local_date_utc
-            
-            if self.verbose:
-                item_type = "repository" if 'pushed_at' in repo_data else "gist"
-                print(f"🔍 {item_type.title()} date check: GitHub={github_date_utc}, Local={local_date_utc}, Update needed={needs_update}")
-            
-            return needs_update
-            
-        except Exception as e:
-            if self.verbose:
-                print(f"⚠️ Date comparison error: {e}")
-            return True
 
     def start(self):
         self.printer.show_head(text=self.config.name)
@@ -369,12 +339,6 @@ class AppManager:
                 progress_bar.update(index, count, len(failed_dict), f"Checking: {name}")
             else:
                 self.printer.print_framed(f'{index}/{count}/{len(failed_dict)}: Checking: {name}')
-            
-            if not self._needs_download(name, item_data, file_path):
-                skipped_count += 1
-                if self.verbose:
-                    print(f"   ✅ Already up to date: {name}")
-                continue
 
             download_url = self._get_download_url(name, item_data, item_type)
             
@@ -385,10 +349,6 @@ class AppManager:
                 continue
 
             download_tasks.append((name, download_url, file_path))
-
-        if not download_tasks:
-            print(f"📊 All items are already up to date! (skipped {skipped_count})")
-            return {}
 
         total_to_process = len(download_tasks)
         
@@ -556,7 +516,6 @@ class AppManager:
                 import time
                 time.sleep(5)
 
-        # ФИНАЛЬНЫЙ РЕЗУЛЬТАТ
         if not self.verbose:
             if item_type == "repositories":
                 progress_bar_parallel.finish(message=f'Completed {success_count + skipped_count}/{count} {item_type}!')
