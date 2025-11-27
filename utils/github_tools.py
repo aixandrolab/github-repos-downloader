@@ -89,7 +89,8 @@ class GitHubDataMaster:
                                     data_dict[item['full_name']] = {
                                         'ssh_url': item['ssh_url'],
                                         'pushed_at': item['pushed_at'],
-                                        'archive_url': item['archive_url']
+                                        'archive_url': item['archive_url'],
+                                        'updated_at': item['updated_at']
                                     }
                                 else:
                                     data_dict[item['id']] = {
