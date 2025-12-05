@@ -1,6 +1,4 @@
-
-
-from utils.app_manager import AppManager
+from core.app_manager import AppManager
 
 
 def main():

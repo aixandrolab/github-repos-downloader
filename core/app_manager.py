@@ -1,18 +1,18 @@
 import os
 import signal
 import sys
-from utils.archive_manager import ArchiveManager
-from utils.args_manager import ArgumentsManager
-from utils.auth_manager import GithubAuthManager
+from utils.managers.auth_manager import GithubAuthManager
 from utils.config import Config
-from utils.config_file_manager import ConfigPathManager
-from utils.directory_manager import DirectoryManager
-from utils.gists_manager import GistsManager
+from utils.managers.archive_manager import ArchiveManager
+from utils.managers.args_manager import ArgumentsManager
+from utils.managers.config_file_manager import ConfigPathManager
+from utils.managers.directory_manager import DirectoryManager
+from utils.managers.gists_manager import GistsManager
+from utils.managers.repo_manager import RepositoriesManager
+from utils.managers.report_manager import QualityReportManager
+from utils.managers.system_action_manager import SystemActionManager
 from utils.printers import SmartPrinter
-from utils.repo_manager import RepositoriesManager
-from utils.report_manager import QualityReportManager
-from utils.system_action_manager import SystemActionManager
-from utils.token_manager import TokenManager
+from utils.managers.token_manager import TokenManager
 
 
 class AppManager:

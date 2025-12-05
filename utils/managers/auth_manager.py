@@ -1,6 +1,4 @@
-
-
-from utils.github_tools import GitHubDataMaster
+from core.github_tools import GitHubDataMaster
 
 
 class GithubAuthManager:
