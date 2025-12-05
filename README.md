@@ -1,4 +1,4 @@
-# GitHub Repos Backup Tools <sup>v0.1.5</sup>
+# GitHub Repos Backup Tools <sup>v0.2.0</sup>
 
 A comprehensive solution for backing up GitHub repositories and gists with full automation.
 

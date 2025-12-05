@@ -4,7 +4,7 @@
 # Copyright © 2025, Alexander Suvorov
 # All rights reserved.
 # --------------------------------------------------------
-# https://github.com/aixandrolab/
+# https://github.com/smartlegionlab/
 # --------------------------------------------------------
 import sys
 import shutil
@@ -55,4 +55,5 @@ class ProgressBar:
         self._progress_bar(current, total, failed, message)
 
     def finish(self, message='Progress completed!'):
+        # self._clear_line()
         print(f"\n✅ {message}\n")
