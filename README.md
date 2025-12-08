@@ -110,7 +110,12 @@ python app.py -r --timeout 120
 
 **Download and create archive:**
 ```bash
-python app.py -r --archive
+python app.py -r
+```
+
+**Download and don't archive:**
+```bash
+python app.py -r --no-archive
 ```
 
 **Download with system shutdown after completion:**
@@ -125,7 +130,7 @@ python app.py -r --reboot
 
 **Maximum parallel performance:**
 ```bash
-python app.py -r -g --archive --timeout 180
+python app.py -r -g --timeout 180
 ```
 
 ### **Command Line Reference**
@@ -135,7 +140,7 @@ python app.py -r -g --archive --timeout 180
 | `-r, --repos` | Download repositories | False | `-r` |
 | `-g, --gists` | Download gists | False | `-g` |
 | `-t, --token` | Update GitHub token | False | `-t` |
-| `--archive` | Create backup archive | False | `--archive` |
+| `---noarchive` | Don't create backup archive | False | `--no-archive` |
 | `--timeout N` | Download timeout in seconds | 30 | `--timeout 90` |
 | `--verbose` | Enable verbose output | False | `--verbose` |
 | `--shutdown` | Shutdown system after completion | False | `--shutdown` |

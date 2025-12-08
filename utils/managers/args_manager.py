@@ -41,9 +41,9 @@ class ArgumentsManager:
         )
 
         parser.add_argument(
-            "--archive",
+            "--no-archive",
             action="store_true",
-            help="Create backup archive"
+            help="Don't create backup archive"
         )
 
         parser.add_argument(

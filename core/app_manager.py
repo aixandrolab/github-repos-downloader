@@ -126,7 +126,7 @@ class AppManager:
         if not report_status:
             print('❌ Generating backup report error!')
 
-        if self.args_manager.args.archive:
+        if not self.args_manager.args.no_archive:
             archive_status = self._create_archive()
             if not archive_status:
                 print("❌ Archive creation error!")
@@ -235,7 +235,7 @@ class AppManager:
         backup_items = []
         if args.repos: backup_items.append("📦 Repositories")
         if args.gists: backup_items.append("📝 Gists")
-        if args.archive: backup_items.append("🗄 Archive")
+        if not args.no_archive: backup_items.append("🗄 Archive")
 
         print(f"   Backup: {', '.join(backup_items)}")
         print(f"   Timeout: {args.timeout}s")
