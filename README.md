@@ -1,402 +1,135 @@
-# GitHub Repos Downloader <sup>v0.2.0</sup>
+# GitHub Repository Backup Tool <sup>v0.2.1</sup>
 
-## 🚀 Complete GitHub Backup Solution
-
-A powerful, feature-rich tool for comprehensive GitHub backups with parallel downloads, intelligent reporting, and system automation.
-
-## ✨ **What's New in v2.0.0**
-
-- **Parallel Processing**: Download multiple repositories simultaneously using all available CPU cores
-- **Smart Archiving**: Create organized backup archives with automatic compression
-- **Quality Reports**: Generate detailed analytics with insights and recommendations
-- **System Integration**: Automate shutdown/reboot after backup completion
-- **Enhanced Reliability**: Advanced retry mechanisms and error handling
-
-## 🎯 **Core Features**
-
-### ✅ **Multi-Core Parallel Downloads**
-- Automatically detects CPU cores and uses optimal number of workers
-- Parallel processing for both repositories and gists
-- Adaptive strategy: sequential for ≤5 items, parallel for larger batches
-
-### ✅ **Intelligent Backup Management**
-- Structured directory organization: `~/username_github_downloads/`
-- Automatic detection of existing content
-- Smart retry logic with configurable attempts
-- Progress tracking with real-time updates
-
-### ✅ **Comprehensive Reporting**
-- Detailed quality reports with success statistics
-- Analytics on repository sizes and update times
-- Failure analysis with actionable recommendations
-- Multiple report formats: JSON, TXT, and short summaries
-
-### ✅ **System Automation**
-- Schedule system shutdown after completion
-- Option to reboot system when done
-- Graceful handling of interruptions (Ctrl+C)
-
-### ✅ **Security & Reliability**
-- Secure token storage with validation
-- Protection against path traversal attacks
-- File integrity verification (ZIP validation)
-- Connection timeout management
-
-## 📋 **System Requirements**
-
-### **Required:**
-- Python 3.7+
-- `curl` command-line tool
-- GitHub personal access token
-
-### **Recommended:**
-- 4+ CPU cores for optimal parallel performance
-- 2GB+ RAM for large backups
-- Stable internet connection
-
-## 🚀 **Quick Start**
-
-### **1. Installation**
-```bash
-git clone https://github.com/aixandrolab/github-repos-downloader.git
-cd github-repos-downloader
-```
-
-### **2. GitHub Token Setup**
-1. Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
-2. Click "Generate new token (classic)"
-3. Configure token:
-   - **Name**: "GitHub Backup Tool"
-   - **Expiration**: "No expiration" (recommended)
-   - **Scopes**: Select all `repo` and `gist` permissions
-4. Copy the generated token
-
-### **3. First Run (Token Configuration)**
-```bash
-python app.py -t
-```
-This will prompt you to enter your GitHub token for initial setup.
-
-## 📖 **Complete Usage Guide**
-
-### **Basic Operations**
-
-**Download all repositories:**
-```bash
-python app.py -r
-```
-
-**Download all gists:**
-```bash
-python app.py -g
-```
-
-**Download both repositories and gists:**
-```bash
-python app.py -r -g
-```
-
-### **Advanced Options**
-
-**Verbose mode with detailed logging:**
-```bash
-python app.py -r --verbose
-```
-
-**Download with custom timeout (120 seconds):**
-```bash
-python app.py -r --timeout 120
-```
-
-**Download and create archive:**
-```bash
-python app.py -r
-```
-
-**Download and don't archive:**
-```bash
-python app.py -r --no-archive
-```
-
-**Download with system shutdown after completion:**
-```bash
-python app.py -r --shutdown
-```
-
-**Download with system reboot:**
-```bash
-python app.py -r --reboot
-```
-
-**Maximum parallel performance:**
-```bash
-python app.py -r -g --timeout 180
-```
-
-### **Command Line Reference**
-
-| Argument | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `-r, --repos` | Download repositories | False | `-r` |
-| `-g, --gists` | Download gists | False | `-g` |
-| `-t, --token` | Update GitHub token | False | `-t` |
-| `---noarchive` | Don't create backup archive | False | `--no-archive` |
-| `--timeout N` | Download timeout in seconds | 30 | `--timeout 90` |
-| `--verbose` | Enable verbose output | False | `--verbose` |
-| `--shutdown` | Shutdown system after completion | False | `--shutdown` |
-| `--reboot` | Reboot system after completion | False | `--reboot` |
-
-## 🏗️ **Project Architecture**
-
-```
-github-repos-downloader/
-├── app.py                           # Application entry point
-├── core/                            # Core application modules
-│   ├── app_manager.py               # Main application controller
-│   └── github_tools.py              # GitHub API client
-├── utils/                           # Utility modules
-│   ├── managers/                    # Feature managers
-│   │   ├── archive_manager.py       # Archive creation
-│   │   ├── args_manager.py          # Arguments parsing
-│   │   ├── auth_manager.py          # GitHub Authenticate
-│   │   ├── config_file_manager.py   # Config file creation
-│   │   ├── directory_manager.py     # Backup directory creation
-│   │   ├── gists_manager.py         # Gists downloader
-│   │   ├── repo_manager.py          # Repositories downloader
-│   │   ├── report_manager.py        # Quality reporting
-│   │   ├── system_action_manager.py # System control
-│   │   └── token_manager.py         # Create/Check GitHub token
-│   ├── archive_creator.py           # Configuration parsers
-│   ├── config.py                    # App configuration
-│   ├── printers.py                  # Console output
-│   └── progress_bar.py              # Progress visualization
-```
-
-## 🔄 **How It Works**
-
-### **1. Authentication & Setup**
-```
-1. Parse command line arguments
-2. Load/validate GitHub token
-3. Authenticate with GitHub API
-4. Create backup directory structure
-```
-
-### **2. Intelligent Download Process**
-```
-1. Fetch repository/gist metadata from GitHub
-2. Determine optimal parallel workers (CPU cores - 1)
-3. Download archives in parallel batches
-4. Validate ZIP file integrity
-5. Retry failed downloads automatically
-6. Track progress with visual indicators
-```
-
-### **3. Post-Processing**
-```
-1. Generate detailed quality reports
-2. Create compressed archive (if requested)
-3. Save reports to backup directory
-4. Execute system actions (shutdown/reboot)
-```
-
-## ⚡ **Performance Optimization**
-
-### **Parallel Processing Strategy**
-- **Small batches (≤5 items)**: Sequential processing
-- **Large batches**: Parallel with `(CPU cores - 1)` workers
-- **Memory efficient**: Streaming downloads, no large in-memory storage
-- **Network optimized**: Connection reuse and pipelining
-
-### **Timeout Management**
-```bash
-# For fast connections and small repositories
---timeout 30
-
-# For slow connections or large repositories
---timeout 120
-
-# For comprehensive backups with archives
---timeout 180
-```
-
-### **Memory Usage**
-- Downloads stream directly to disk
-- Minimal RAM usage (~100-200MB)
-- Suitable for systems with limited memory
-
-## 📊 **Reporting System**
-
-### **Generated Reports**
-
-**Quality Report (`backup_report_TIMESTAMP.txt`):**
-- Executive summary with success rates
-- Top 10 largest repositories
-- Recently updated content
-- Failure analysis and recommendations
-- Performance metrics and duration
-
-**JSON Report (`backup_report_TIMESTAMP.json`):**
-- Structured data for programmatic analysis
-- Complete statistics in machine-readable format
-- Repository/gist details with metadata
-
-**Summary Report (`backup_summary_TIMESTAMP.txt`):**
-- Quick overview of backup results
-- Success/failure counts
-- Backup size and location
-
-### **Report Insights**
-```
-✅ Success Rate: 95%+
-   - Excellent performance
-   - Minimal intervention needed
-
-⚠️ Success Rate: 80-95%
-   - Good results
-   - Check failed items
-
-🔴 Success Rate: <80%
-   - Needs attention
-   - Review network/token permissions
-```
-
-## 🛡️ **Security Features**
-
-### **Token Security**
-- Encrypted storage in user config directory
-- Validation against GitHub API
-- No token logging in verbose mode
-- Automatic token update capability
-
-### **File Safety**
-- Path traversal protection
-- File integrity verification
-- Safe temporary file handling
-- Cleanup of failed downloads
-
-### **System Protection**
-- Graceful interruption handling
-- Safe system shutdown/reboot
-- Disk space monitoring
-- Network failure recovery
-
-## 🔧 **Troubleshooting Guide**
-
-### **Common Issues & Solutions**
-
-**Issue: "Token validation failed"**
-```
-Solution:
-1. Run: python app.py -t (update token)
-2. Verify token has required scopes
-3. Check token expiration date
-```
-
-**Issue: "Download timeout"**
-```
-Solution:
-1. Increase timeout: --timeout 120
-2. Check internet connection
-3. Verify GitHub API status
-```
-
-**Issue: "Incomplete downloads"**
-```
-Solution:
-1. Enable verbose mode: --verbose
-2. Check disk space
-3. Verify network stability
-```
-
-**Issue: "Parallel download errors"**
-```
-Solution:
-1. Reduce workers: modify max_workers parameter
-2. Check system resources
-3. Monitor network bandwidth
-```
-
-### **Debug Commands**
-```bash
-# Full debug with maximum information
-python app.py -r -g --verbose --timeout 180
-
-# Test with small subset
-# (Manually limit in code for testing)
-
-# Check system compatibility
-python -c "import multiprocessing; print(f'CPU Cores: {multiprocessing.cpu_count()}')"
-```
-
-## 📈 **Performance Benchmarks**
-
-### **Typical Performance**
-```
-Repositories: 50 items
-Gists: 20 items
-Time: 5-10 minutes
-Speed: 5-10 items/minute
-```
-
-### **Factors Affecting Performance**
-- **Network speed**: Primary bottleneck
-- **Repository size**: Large repos take longer
-- **CPU cores**: More cores = better parallelism
-- **GitHub API rate limits**: 5000 requests/hour
-
-### **Optimization Tips**
-```bash
-# Optimal for high-speed connections
-python app.py -r -g --timeout 60
-
-# For slow connections or large backups
-python app.py -r --timeout 180 --archive
-
-# For minimal system impact
-python app.py -r --timeout 30
-```
-
-## 🤝 **Contributing**
-
-### **Development Setup**
-```bash
-git clone https://github.com/aixandrolab/github-repos-downloader.git
-cd github-repos-downloader
-```
-
-### **Contribution Guidelines**
-1. Fork the repository
-2. Create feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit pull request
-
-## 📄 **License**
-
-BSD 3-Clause License - See [LICENSE](LICENSE) file for details.
-
-
-## 📞 **Support & Resources**
-
-### **Getting Help**
-- **GitHub Issues**: Bug reports and feature requests
-- **Documentation**: This README and code comments
-- **Community**: GitHub Discussions
-
-### **Version Compatibility**
-```
-v2.0.0: Current stable release
-v1.x: Legacy version (deprecated)
-Future: Regular updates planned
-```
+A powerful Python utility for automating comprehensive backups of your GitHub repositories and gists. This tool downloads your code as `.zip` archives for safe keeping, with parallel processing for speed and detailed reporting for insight.
 
 ---
 
-**Maintainer**: Alexander Suvorov  
-**Repository**: https://github.com/aixandrolab/github-repos-downloader  
-**Documentation**: https://github.com/aixandrolab/github-repos-downloader/wiki  
-**Issues**: https://github.com/aixandrolab/github-repos-downloader/issues  
+## ✨ Key Features
 
-*Last Updated: December 2025*  
-*Version: 2.0.0*
+*   **Complete Backup**: Downloads all your GitHub repositories and gists as `.zip` archives in a single operation.
+*   **Parallel Downloads**: Speeds up the process by downloading multiple items simultaneously, automatically using your available CPU cores.
+*   **Detailed Reporting**: Generates a quality report with success rates, sizes, and actionable insights after each backup.
+*   **System Automation**: Optionally schedules your computer to shut down or reboot after the backup completes.
+*   **Robust Error Handling**: Implements retry logic, handles network timeouts, and protects against failed downloads.
+*   **Secure Token Management**: Stores your GitHub token securely in your system's configuration directory.
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- **Python 3.7+**
+- **`curl` command-line tool** (used for efficient downloads)
+- **GitHub Personal Access Token** with `repo` and `gist` scopes
+
+### Installation & First Run
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/aixandrolab/github-repos-downloader.git
+    cd github-repos-downloader
+    ```
+
+2.  **Configure your GitHub Token**:
+    The first time you run the tool, you need to set up your token. Follow these steps to create it on GitHub:
+    1.  Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens).
+    2.  Click **"Generate new token (classic)"**.
+    3.  Name it (e.g., "Backup Tool"), set **Expiration** to "No expiration" (recommended), and select the **`repo`** and **`gist`** scopes.
+    4.  Click **"Generate token"** and copy it immediately.
+
+3.  **Run the tool to save your token**:
+    ```bash
+    python app.py -t
+    ```
+    You will be prompted to paste your token. It will be saved securely for future use.
+
+### Basic Usage Examples
+
+| Command | Action |
+| :--- | :--- |
+| `python app.py -r` | Download all your **repositories**. |
+| `python app.py -g` | Download all your **gists**. |
+| `python app.py -r -g` | Download both repositories **and** gists. |
+| `python app.py -r --verbose` | Download repos with detailed, step-by-step output. |
+| `python app.py -r --timeout 120` | Download repos with a 2-minute timeout per request. |
+| `python app.py -r --shutdown` | Download repos and **shutdown the computer** when done. |
+
+## 📂 Understanding the Backup Process
+
+### What Gets Backed Up?
+The tool creates snapshot `.zip` archives of your code. **Important**: These archives contain the code at a specific point in time but do not include the full Git history.
+
+*   **Repositories**: Saved as `[repository-name].zip` in the `repositories/` folder.
+*   **Gists**: Saved as `[gist-id].zip` in the `gists/` folder.
+
+### Where Are Files Saved?
+Your backups are organized in a dedicated folder in your home directory:
+```
+~/[your_github_username]_github_downloads/
+├── repositories/
+│   ├── project-one.zip
+│   └── project-two.zip
+├── gists/
+│   ├── a1b2c3d4.zip
+│   └── e5f6g7h8.zip
+└── reports/
+    └── backup_report_20251215_143022.txt
+```
+
+### Post-Backup Archiving
+By default, after downloading, the entire `github_downloads` folder is compressed into a single `.zip` file (e.g., `github_downloads_alex_2025-12-15_14_30_22.zip`) and saved to your home directory. Use the `--no-archive` flag to skip this step.
+
+## ⚙️ Command Line Reference
+
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| `-r`, `--repos` | Download your repositories. | `False` |
+| `-g`, `--gists` | Download your gists. | `False` |
+| `-t`, `--token` | Update or set your stored GitHub token. | `False` |
+| `--no-archive` | Do **not** create a final `.zip` archive of the backup folder. | `False` (archive is created) |
+| `--timeout N` | Set the timeout (in seconds) for each download operation. | `30` |
+| `--verbose` | Print detailed, real-time information about the download process. | `False` |
+| `--shutdown` | Shutdown the computer 60 seconds after the backup finishes. | `False` |
+| `--reboot` | Reboot the computer 60 seconds after the backup finishes. | `False` |
+
+**Note:** The `--shutdown` and `--reboot` flags are mutually exclusive.
+
+## 🔧 Advanced Usage & Performance
+
+### Optimizing Download Speed
+The tool automatically uses parallel processing for batches larger than 5 items. The number of parallel workers is set to your **CPU cores minus one** for optimal performance.
+
+*   **For large backups (50+ items)**: Use a higher timeout to prevent failures: `--timeout 120`
+*   **For maximum performance**: Combine flags: `python app.py -r -g --timeout 180`
+
+### Handling API Rate Limits
+The tool respects GitHub's API rate limits. Authenticated users have a limit of 5,000 requests per hour, which is typically sufficient for backup operations. If you encounter rate limits:
+1.  The tool will automatically pause and retry using an exponential backoff strategy.
+2.  You can reduce the number of parallel workers by modifying the `max_workers` parameter in the manager classes if needed.
+
+### Troubleshooting Common Issues
+
+| Problem | Likely Cause | Solution |
+| :--- | :--- | :--- |
+| **"Failed to authenticate via GitHub"** | Token is invalid, expired, or lacks correct scopes. | 1. Run `python app.py -t` to update the token. <br> 2. Ensure the token has `repo` and `gist` scopes. |
+| **"Download timeout"** | Network is slow or repository is very large. | Re-run with a higher timeout: `--timeout 120`. |
+| **Some items fail to download** | Repository may be renamed, deleted, or is a fork of a deleted repo. | Check the generated report for a list of failures. Failed items are retried automatically up to 3 times. |
+| **"curl" command not found** | The `curl` tool is not installed on your system. | Install `curl` using your system's package manager (e.g., `apt install curl` on Ubuntu). |
+
+## 📊 Understanding the Quality Report
+After each run, a detailed report is saved in the `reports/` folder and printed to the console. It includes:
+*   **Summary**: Counts of successful/failed downloads for repos and gists.
+*   **Statistics**: File sizes and success percentages.
+*   **Top Lists**: Your 10 largest repositories and gists with the most files.
+*   **Failure Analysis**: A list of items that couldn't be downloaded.
+*   **Insights & Recommendations**: Actionable advice based on the backup results.
+
+## 🛡️ Security & Privacy
+
+*   **Token Storage**: Your GitHub token is stored in an encrypted format at `~/.config/github_repos_downloader/github_token.json`.
+*   **No Data Sent Elsewhere**: The tool only communicates with GitHub's API. Your code and token never leave your machine.
+*   **Clean Operations**: Temporary files are deleted after use, and failed downloads are cleaned up.
+
+## 📄 License & Attribution
+This tool is released under the BSD 3-Clause [License](LICENSE). Copyright © 2025, Alexander Suvorov.
+
+---
+**For bug reports, feature requests, or contributions**, please visit the project repository: [https://github.com/aixandrolab/github-repos-downloader](https://github.com/aixandrolab/github-repos-downloader).
